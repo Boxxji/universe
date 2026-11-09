@@ -273,13 +273,31 @@ impl ProcessAdapter for TorAdapter {
         let envs = get_libevent_envs(&binary_version_path);
 
         if self.config.use_bridges {
-            // Used by tor bridges
-            // TODO: This does not work when path has space on windows.
-            // Consider running lyrebird binary manually
+            // Ensure lyrebird executable path has no spaces on Windows so Tor's whitespace-delimited
+            // ClientTransportPlugin parser does not truncate paths under C:\Users\<First Last>\... (Fixes #3557).
+            let safe_lyrebird_path = if convert_to_string(lyrebird_path.clone())?.contains(' ') {
+                let fallback_dir = std::path::PathBuf::from(if cfg!(target_os = "windows") {
+                    r"C:\ProgramData\TariUniverse\tor"
+                } else {
+                    "/tmp/tari-universe-tor"
+                });
+                let _ = std::fs::create_dir_all(&fallback_dir);
+                let file_name = lyrebird_path
+                    .file_name()
+                    .unwrap_or_else(|| std::ffi::OsStr::new("lyrebird"));
+                let staged = fallback_dir.join(file_name);
+                if std::fs::copy(&lyrebird_path, &staged).is_ok() {
+                    staged
+                } else {
+                    lyrebird_path.clone()
+                }
+            } else {
+                lyrebird_path.clone()
+            };
             args.push("--ClientTransportPlugin".to_string());
             args.push(format!(
                 "obfs4 exec {} managed",
-                convert_to_string(lyrebird_path)?
+                convert_to_string(safe_lyrebird_path)?
             ));
             for bridge in &self.config.bridges {
                 args.push("--Bridge".to_string());
