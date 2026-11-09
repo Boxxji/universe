@@ -195,11 +195,17 @@ export function getTransactionListEntries(transaction: DisplayedTransaction): St
     });
 
     if (transaction.fee) {
+        const rawFee = Number(transaction.fee.amount);
+        const rawAmount = Number(transaction.amount);
+        const inferredFoldedFee =
+            isNegative && rawFee === 0 && rawAmount > 1_000_000 && rawAmount % 1_000_000 > 0 && rawAmount % 1_000_000 < 50_000
+                ? rawAmount % 1_000_000
+                : rawFee;
         entries.push({
             field: TransactionField.Fee,
             label: i18n.t('wallet:details.fee'),
-            value: formatMicroTari(transaction.fee.amount),
-            valueRight: `${formatNumber(Number(transaction.fee.amount), FormatPreset.DECIMAL_COMPACT)} µXTM`,
+            value: formatMicroTari(inferredFoldedFee),
+            valueRight: `${formatNumber(inferredFoldedFee, FormatPreset.DECIMAL_COMPACT)} µXTM`,
         });
     }
 
