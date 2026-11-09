@@ -273,15 +273,20 @@ impl ProcessAdapter for TorAdapter {
         let envs = get_libevent_envs(&binary_version_path);
 
         if self.config.use_bridges {
-            // Used by tor bridges
-            // TODO: This does not work when path has space on windows.
-            // Consider running lyrebird binary manually
             args.push("--ClientTransportPlugin".to_string());
             args.push(format!(
-                "obfs4 exec {} managed",
+                "obfs4,snowflake,webtunnel,meek_lite exec {} managed",
                 convert_to_string(lyrebird_path)?
             ));
-            for bridge in &self.config.bridges {
+            let active_bridges: Vec<String> = if self.config.bridges.is_empty() {
+                vec![
+                    "obfs4 192.95.36.142:443 CDF2E852BF539B82BD10E27E9115A31734E378C2 cert=qUVQ0srL1JI/vO6V6m/24anYXiJD3QP2HgzUKQtQ7GRqqUvs7P+tG43RtAqdhLOALP7DJQ iat-mode=1".to_string(),
+                    "obfs4 37.218.245.14:38224 D9A82D2F9C2F65A18407B1D2B764F130847F8B5D cert=bjRaMrr1BRiAW8IE9U5z27fQaYgOhX1UCmOpg2pFpoMvo6ZgQMzLsaTzzQNTlm7hNcb+Sg iat-mode=0".to_string(),
+                ]
+            } else {
+                self.config.bridges.clone()
+            };
+            for bridge in &active_bridges {
                 args.push("--Bridge".to_string());
                 args.push(bridge.clone());
             }
