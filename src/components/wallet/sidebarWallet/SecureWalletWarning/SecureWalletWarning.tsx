@@ -9,6 +9,7 @@ import {
     StepsWrapper,
     Wrapper,
 } from './styles';
+import { useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { useSetupStore } from '@app/store/useSetupStore';
@@ -35,7 +36,14 @@ export default function SecureWalletWarning({ $isScrolled, isExchangeMiner }: Pr
         setModal(isExchangeMiner ? 'create_pin' : 'intro');
     };
 
+    const totalBalance = useWalletStore((s) => (s.balance?.available_balance ?? 0) + (s.balance?.pending_incoming_balance ?? 0));
     const isHidden = isExchangeMiner ? pinLocked : seedBackedUp && pinLocked;
+
+    useEffect(() => {
+        if (walletModuleInitialized && !isHidden && totalBalance > 0) {
+            setModal(isExchangeMiner ? 'create_pin' : 'intro');
+        }
+    }, [walletModuleInitialized, isHidden, totalBalance, isExchangeMiner, setModal]);
 
     return !isHidden ? (
         <AnimatePresence>
