@@ -10,9 +10,21 @@ import {
 } from '../../../components/SettingsGroup.styles.ts';
 import { useNodeStore } from '@app/store/useNodeStore.ts';
 
+import { invoke } from '@tauri-apps/api/core';
+import { useEffect } from 'react';
+
 export const TorDebug = () => {
     const { t } = useTranslation('settings', { useSuspense: false });
     const torEntryGuards = useNodeStore((s) => s.tor_entry_guards);
+
+    useEffect(() => {
+        const refreshGuards = () => {
+            invoke<string[]>('refresh_tor_entry_guards').catch(() => {});
+        };
+        refreshGuards();
+        const timer = window.setInterval(refreshGuards, 15000);
+        return () => window.clearInterval(timer);
+    }, []);
 
     return (
         <SettingsGroupWrapper>
