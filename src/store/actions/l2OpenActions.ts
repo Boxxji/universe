@@ -1,3 +1,4 @@
+// Fix #3518 (2026-11-07): Guard openL2 while L1 wallet state (is_pin_locked) is still loading (undefined)
 import { t } from 'i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { addToast } from '@app/components/ToastStack/useToastStore';
