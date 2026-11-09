@@ -62,14 +62,14 @@ pub(crate) struct TorAdapter {
 
 fn prepare_tor_working_dir(data_dir: &Path, is_first_start: bool) -> Result<PathBuf, Error> {
     let working_dir: PathBuf = data_dir.join("tor-data");
+    std::fs::create_dir_all(&working_dir)?;
     if is_first_start {
-        info!(target: LOG_TARGET_APP_LOGIC, "Clearing tor data directory on first start");
-        if std::fs::exists(&working_dir)? {
-            std::fs::remove_dir_all(&working_dir)?;
-            info!(target: LOG_TARGET_APP_LOGIC, "Removed tor data directory");
+        let stale_lock = working_dir.join("lock");
+        if std::fs::exists(&stale_lock)? {
+            let _ = std::fs::remove_file(&stale_lock);
+            info!(target: LOG_TARGET_APP_LOGIC, "Removed stale tor-data lockfile while preserving entry guards and consensus cache");
         }
     }
-    std::fs::create_dir_all(&working_dir)?;
     Ok(working_dir)
 }
 
@@ -363,8 +363,11 @@ impl StatusMonitor for TorStatusMonitor {
         &self,
         _duration_since_last_healthy_status: Duration,
     ) -> Result<HandleUnhealthyResult, anyhow::Error> {
-        fs::remove_dir_all(self.base_path.join("tor-data")).await?;
-
+        let tor_data = self.base_path.join("tor-data");
+        let stale_lock = tor_data.join("lock");
+        if fs::try_exists(&stale_lock).await.unwrap_or(false) {
+            let _ = fs::remove_file(&stale_lock).await;
+        }
         Ok(HandleUnhealthyResult::Continue)
     }
 }
