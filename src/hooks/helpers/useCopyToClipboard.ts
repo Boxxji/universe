@@ -1,3 +1,4 @@
+// Fix #3489 (2026-11-05): Fallback to navigator.clipboard.writeText under Wayland Flatpak sandbox
 import { clear, readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
