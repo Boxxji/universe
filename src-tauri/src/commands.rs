@@ -297,10 +297,24 @@ pub async fn fetch_tor_bridges() -> Result<Vec<String>, String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    let re = Regex::new(r"obfs4.*?<br/>").map_err(|e| e.to_string())?;
+    let re = Regex::new(r"obfs4.*?<br\s*/?>").map_err(|e| e.to_string())?;
     let bridges: Vec<String> = re
         .find_iter(&res_html)
-        .map(|m| m.as_str().trim_end_matches(" <br/>").to_string())
+        .map(|m| {
+            m.as_str()
+                .trim_end_matches("<br/>")
+                .trim_end_matches("<br />")
+                .trim()
+                .replace("&#43;", "+")
+                .replace("&#x2b;", "+")
+                .replace("&#x2B;", "+")
+                .replace("&amp;", "&")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+        })
+        .filter(|line| line.starts_with("obfs4 ") && !line.contains("&#"))
         .collect();
     info!(target: LOG_TARGET_APP_LOGIC, "Fetched default bridges: {bridges:?}");
     if timer.elapsed() > MAX_ACCEPTABLE_COMMAND_TIME {

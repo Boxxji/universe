@@ -34,7 +34,9 @@ interface EditedTorConfig {
 }
 
 const hasBridgeError = (bridge: string) => {
-    return !bridge || bridge.trim().length === 0;
+    if (!bridge || bridge.trim().length === 0) return true;
+    const trimmed = bridge.trim();
+    return /&#\d+;|&#x[0-9a-fA-F]+;|&amp;/i.test(trimmed);
 };
 
 const hasControlPortError = (cp: number) => {
