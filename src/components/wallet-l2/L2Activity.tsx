@@ -285,6 +285,7 @@ function L2BurnRow({
     const waiting = burn.status === 'claimable' && !preLaunch && blocksToWait > 0;
     const checking = burn.status === 'claimable' && !preLaunch && burn.mined_height === null;
 
+    const autoClaimReady = burn.status === 'claimable' && !preLaunch && !checking && !waiting && claiming !== burn.commitment;
     let status = t('l2.claim.ready');
     if (burn.status === 'pending') status = t('l2.claim.pending');
     else if (burn.status === 'abandoned') status = t('l2.claim.abandoned');
