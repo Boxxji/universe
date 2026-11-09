@@ -205,7 +205,8 @@ impl SetupPhaseImpl for NodeSetupPhase {
             })
             .await?;
 
-        progress_stepper
+        let mut effective_use_tor = use_tor;
+        if let Err(tor_err) = progress_stepper
             .complete_step(SetupStep::StartTor, || async {
                 if skip_tor_binary {
                     return Ok(());
@@ -215,7 +216,11 @@ impl SetupPhaseImpl for NodeSetupPhase {
                     .ensure_started(data_dir.clone(), config_dir.clone(), log_dir.clone())
                     .await
             })
-            .await?;
+            .await
+        {
+            warn!(target: LOG_TARGET_APP_LOGIC, "Tor bootstrap failed ({tor_err:?}); falling back to direct TCP transport so node, wallet, and solo mining remain operational");
+            effective_use_tor = false;
+        }
 
         progress_stepper.complete_step(SetupStep::StartingNode, || async {
             for _i in 0..2 {
@@ -226,7 +231,7 @@ impl SetupPhaseImpl for NodeSetupPhase {
                         node_data_dir.clone(),
                         config_dir.clone(),
                         log_dir.clone(),
-                        use_tor,
+                        effective_use_tor,
                         tor_control_port,
                         tor_cookie_path,
                         Some(app_configuration.base_node_grpc_address.clone())
