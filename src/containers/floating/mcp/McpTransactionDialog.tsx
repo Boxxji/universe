@@ -52,7 +52,6 @@ export default function McpTransactionDialog() {
             setCountdown((prev) => {
                 if (prev <= 1) {
                     clearInterval(interval);
-                    handleDeny();
                     return 0;
                 }
                 return prev - 1;
@@ -60,7 +59,13 @@ export default function McpTransactionDialog() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [pending, handleDeny]);
+    }, [pending]);
+
+    useEffect(() => {
+        if (pending && countdown === 0) {
+            void handleDeny();
+        }
+    }, [pending, countdown, handleDeny]);
 
     const handleApprove = useCallback(async () => {
         if (!pending) return;
