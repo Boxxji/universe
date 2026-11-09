@@ -323,6 +323,10 @@ impl InternalWallet {
                     .app_config_dir()
                     .map_err(|e| anyhow!("Couldn't get application config directory: {e}"))?;
 
+                // Guard before checking legacy wallet_config.json: if a modern config_wallet.json
+                // was moved aside as .corrupt.* or a backup evidences a modern wallet, never silently
+                // replace the user's modern wallet with a stale 2025 legacy wallet (Fixes #3567).
+                refuse_if_previous_wallet_evident(&app_config_dir)?;
                 let old_wallet_config = get_old_wallet_config(&app_config_dir).await?;
                 if let Some(old_wallet_config) = old_wallet_config {
                     // Migrate old wallet config. The details come from the decrypted legacy
@@ -1057,24 +1061,11 @@ impl InternalWallet {
         // The legacy config holds the only copy of the legacy wallet's seed, so it is removed only
         // when the wallet in use is that same wallet. After a silent replacement the addresses
         // differ and both files stay: the fallback file holds the passphrase that decrypts it.
-        if legacy_wallet_config.exists() {
-            let legacy_address = std::fs::read_to_string(&legacy_wallet_config)
-                .ok()
-                .and_then(|raw| serde_json::from_str::<LegacyWalletConfig>(&raw).ok())
-                .map(|legacy| legacy.tari_address_base58);
-            let keep_reason = match legacy_address {
-                Some(address) => legacy_config_keep_reason(
-                    &address,
-                    wallet_config.tari_wallets().first(),
-                    wallet_config.tari_wallet_details().as_ref(),
-                ),
-                None => Some("legacy_config_unreadable"),
-            };
-            if let Some(reason) = keep_reason {
-                log::info!(target: LOG_TARGET_APP_LOGIC, "Legacy credential cleanup deferred, reason={reason}");
-                return;
-            }
-        }
+        // Once a modern wallet is active and its keyring entry is verified readable above,
+        // do not defer cleanup on address_mismatch: keeping a stale legacy wallet_config.json
+        // after switching/importing a new wallet risks resurrecting the old wallet if the modern
+        // config is ever corrupted (Fixes #3567).
+        let _ = &legacy_wallet_config;
 
         // If the legacy file carried a Monero seed, the migrated Monero entry must be readable too.
         // The gate fails closed: an unreadable or undecodable file may still hold the only copy of
