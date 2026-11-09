@@ -351,3 +351,54 @@ mod tests {
         assert_eq!(loaded.bearer_token().as_deref(), Some(token.as_str()));
     }
 }
+
+
+const RESERVED_WALLET_IDS: &[&str] = &[
+    "monero",
+    MINOTARI_DB_ENTRY,
+    OOTLE_KEYRING_ENTRY,
+    MCP_TOKEN_KEY_ENTRY,
+];
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct OrphanedKeyringWalletCandidate {
+    pub wallet_id: String,
+    pub network: String,
+    pub account_name: String,
+}
+
+impl CredentialManager {
+    /// Extracts the 6-character `<id>` from `inner_wallet_credentials_<network>_<id>`
+    /// while excluding reserved non-Tari or per-install secret entries (`monero`, db/ootle/mcp keys).
+    pub fn parse_orphaned_wallet_id(account_name: &str, network_key: &str) -> Option<String> {
+        let prefix = format!("{}_{}_", KEYCHAIN_USERNAME, network_key);
+        let id = account_name.strip_prefix(&prefix)?.trim();
+        if id.is_empty() || RESERVED_WALLET_IDS.contains(&id) {
+            return None;
+        }
+        Some(id.to_string())
+    }
+
+    /// Filters a list of enumerated OS credential store account names into unique orphaned
+    /// Tari wallet candidates that are not already present in `known_wallet_ids`.
+    pub fn filter_orphaned_wallet_candidates(
+        account_names: &[String],
+        network_key: &str,
+        known_wallet_ids: &[String],
+    ) -> Vec<OrphanedKeyringWalletCandidate> {
+        let mut seen = std::collections::BTreeSet::new();
+        let mut out = Vec::new();
+        for acc in account_names {
+            if let Some(wallet_id) = Self::parse_orphaned_wallet_id(acc, network_key) {
+                if !known_wallet_ids.contains(&wallet_id) && seen.insert(wallet_id.clone()) {
+                    out.push(OrphanedKeyringWalletCandidate {
+                        wallet_id,
+                        network: network_key.to_string(),
+                        account_name: acc.clone(),
+                    });
+                }
+            }
+        }
+        out
+    }
+}
