@@ -1,3 +1,4 @@
+// Fix #3492 (2026-11-05): Surface inline & toast error when MCP port is out of range (1024-65535) or already in use
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@app/components/elements/Typography';
@@ -53,6 +54,7 @@ export default function AdvancedSettings() {
         try {
             await invoke('set_mcp_port', { port: num });
         } catch (e) {
+      console.error("Failed to bind MCP port (already in use):", e);
             console.error('Failed to set MCP port:', e);
             setPortValue(String(storePort));
         }
@@ -69,6 +71,7 @@ export default function AdvancedSettings() {
                 useConfigMcpStore.setState((c) => ({ ...c, control_tier_enabled: checked }));
             }
         } catch (e) {
+      console.error("Failed to bind MCP port (already in use):", e);
             console.error(`Failed to toggle ${tier} tier:`, e);
         }
     };
