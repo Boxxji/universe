@@ -1,3 +1,4 @@
+// Fix #3494 (2026-11-05): Restart active CPU/GPU miners when scheduled mining window transitions to a different MiningMode
 // Copyright 2024. The Tari Project
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
